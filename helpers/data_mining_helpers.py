@@ -1,5 +1,3 @@
-from sklearn.feature_extraction.text import CountVectorizer
-import pandas as pd
 import nltk
 
 """
@@ -20,6 +18,8 @@ def format_labels(target, docs):
     """ format the labels """
     return docs.target_names[target]
 
+
+
 def check_missing_values(row):
     """ functions that check and verifies if there are missing values in dataframe """
     counter = 0
@@ -38,42 +38,42 @@ def tokenize_text(text, remove_stopwords=False):
             # filters here
             tokens.append(word)
     return tokens
-    
-########################################
-""" My Data Mining Helper Functions """
-########################################
-# Function to create term-document matrix DataFrame for each category
-# (by default, CountVectorizer is used to create term-document frequent matrix)
-def create_term_document_df(text, vectorizer=CountVectorizer(), index=None):
-    X = vectorizer.fit_transform(text)  # Transform the text data into word counts, which is a sparse matrix representation
-    
-    # Get the unique words (vocabulary) from the vectorizer
-    words = vectorizer.get_feature_names_out()
-    
-    # Create a DataFrame where rows are documents and columns are words
-    term_document_df = pd.DataFrame(X.toarray(), columns=words, index=index)
-    
-    return term_document_df
 
-# Filter the bottom 1% and top 5% words based on their sum across all documents
-def filter_top_bottom_words_by_sum(tdm_df, top_percent=0.05, bottom_percent=0.01, verbose=False):
-    # Calculate the sum of each word across all documents
-    word_sums = tdm_df.sum(axis=0)
+@staticmethod
+    def format_rows(docs):
+        """Format text and strip special characters"""
+        return [[" ".join(d.split("\n")).strip()] for d in docs.data]
     
-    # Sort the words by their total sum
-    sorted_words = word_sums.sort_values()
+    @staticmethod
+    def format_labels(target, docs):
+        """Format document labels"""
+        return docs.target_names[target]
     
-    # Calculate the number of words to remove
-    total_words = len(sorted_words)
-    top_n = int(top_percent * total_words)
-    bottom_n = int(bottom_percent * total_words)
+    @staticmethod
+    def check_missing_values(row):
+        """Count missing values in dataframe"""
+        return ("The amount of missing records is: ", sum(row))
     
-    # Get the words to remove from the top 5% and bottom 1%
-    words_to_remove = pd.concat([sorted_words.head(bottom_n), sorted_words.tail(top_n)]).index
-
-    if verbose:
-        print(f'Bottom {bottom_percent*100}% words: \n{sorted_words.head(bottom_n)}') #Here we print which words correspond to the bottom percentage we filter
-        print(f'Top {top_percent*100}% words: \n{sorted_words.tail(top_n)}') #Here we print which words correspond to the top percentage we filter
+    @staticmethod
+    def tokenize_text(text, remove_stopwords=False):
+        """Tokenize English text"""
+        tokens = []
+        for sent in nltk.sent_tokenize(text, language='english'):
+            tokens.extend(nltk.word_tokenize(sent, language='english'))
+        return tokens
+    
+    @staticmethod
+    def get_similarity_matrix(tdm_df, categories):
+        """Calculate document similarity matrix"""
+        df = tdm_df.copy()
+        df['cat'] = categories
+        df.sort_values('cat', inplace=True)
         
-    # Return (1) the DataFrame without the filtered words and (2) words removed
-    return tdm_df.drop(columns=words_to_remove), words_to_remove
+        idx = [f"{i}-{df.loc[i, 'cat']}" for i in df.index]
+        df = df.drop('cat', axis=1)
+        
+        return pd.DataFrame(
+            cosine_similarity(df.values),
+            columns=idx,
+            index=idx
+        )
