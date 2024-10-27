@@ -77,3 +77,10 @@ def tokenize_text(text, remove_stopwords=False):
             columns=idx,
             index=idx
         )
+        
+def create_term_document_df(text, vectorizer=CountVectorizer(), index=None):
+    X = vectorizer.fit_transform(text)  
+    words = vectorizer.get_feature_names_out()
+    term_document_df = pd.DataFrame(X.toarray(), columns=words, index=index)
+    
+    return term_document_df
